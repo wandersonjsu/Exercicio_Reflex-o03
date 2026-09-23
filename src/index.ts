@@ -1,4 +1,4 @@
-import { Aluno } from './modelo/Aluno'; 
+import { Aluno } from './modelo/Aluno';
 import { Pessoa } from './modelo/Pessoa';
 
 const testeAluno = new Aluno();

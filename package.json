@@ -1,0 +1,25 @@
+{
+  "name": "ts-reflection-examples",
+  "version": "1.0.0",
+  "description": "Exemplos de reflexão e orientação a objetos em TypeScript",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "ts-node src/index.ts",
+    "aula01:hello": "ts-node src/aula01/HelloWorld.ts",
+    "aula01_1:listarMetodos": "ts-node src/aula01_1/Ex1ReflexaoListarMetodos.ts",
+    "aula01_1:verificaClasse": "ts-node src/aula01_1/Ex2ReflexaoVerificaClasseObjeto.ts",
+    "aula01_1:atributos": "ts-node src/aula01_1/Ex5TesteAtributos.ts",
+    "aula01_1:invocaMetodo": "ts-node src/aula01_1/Ex6InvocaMetodo.ts",
+    "aula01_2:reflexao": "ts-node src/aula01_2/ReflexaoExemplo.ts",
+    "aula01_2:interface": "ts-node src/aula01_2/versaointerface/ReflexaoExemplo.ts"
+  },
+  "dependencies": {
+    "reflect-metadata": "^0.2.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3",
+    "ts-node": "^10.9.2",
+    "@types/node": "^20.11.16"
+  }
+}

@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CRUD genérico com Reflexão</title>
+<style>
+  :root { --fundo:#f5f6f8; --card:#fff; --texto:#1f2430; --suave:#6b7280; --borda:#d9dde3; --destaque:#2563eb; --erro:#b91c1c; }
+  @media (prefers-color-scheme: dark) {
+    :root { --fundo:#14161b; --card:#1d2027; --texto:#e6e8ec; --suave:#9aa1ad; --borda:#343944; --destaque:#6b9bff; --erro:#f87171; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; padding:24px; font-family:system-ui,sans-serif; background:var(--fundo); color:var(--texto); }
+  main { max-width:860px; margin:0 auto; }
+  h1 { font-size:1.4rem; margin:0 0 4px; }
+  .sub { color:var(--suave); margin:0 0 20px; font-size:.9rem; }
+  nav { display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap; }
+  nav button { padding:8px 14px; border:1px solid var(--borda); background:var(--card); color:var(--texto); border-radius:8px; cursor:pointer; }
+  nav button.ativa { background:var(--destaque); border-color:var(--destaque); color:#fff; }
+  section { background:var(--card); border:1px solid var(--borda); border-radius:10px; padding:16px; margin-bottom:16px; }
+  h2 { font-size:1rem; margin:0 0 12px; }
+  form { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:12px; }
+  label { display:flex; flex-direction:column; gap:4px; font-size:.85rem; color:var(--suave); }
+  input { padding:8px; border:1px solid var(--borda); border-radius:6px; background:var(--fundo); color:var(--texto); font-size:.95rem; }
+  .obrig::after { content:" *"; color:var(--erro); }
+  .acoes { grid-column:1/-1; display:flex; gap:8px; }
+  .acoes button, td button { padding:7px 12px; border-radius:6px; border:1px solid var(--borda); background:var(--card); color:var(--texto); cursor:pointer; }
+  .acoes button.primario { background:var(--destaque); border-color:var(--destaque); color:#fff; }
+  #erros { color:var(--erro); font-size:.9rem; margin-top:10px; }
+  #erros:empty { display:none; }
+  .tabela { overflow-x:auto; }
+  table { width:100%; border-collapse:collapse; font-size:.9rem; }
+  th, td { text-align:left; padding:8px; border-bottom:1px solid var(--borda); white-space:nowrap; }
+  th { color:var(--suave); font-weight:600; }
+  td button { margin-right:6px; padding:4px 10px; }
+  .vazio { color:var(--suave); padding:12px 0; }
+</style>
+</head>
+<body>
+<main>
+  <h1>CRUD genérico</h1>
+  <p class="sub">Nenhum campo está escrito aqui: tudo é montado a partir de <code>/api/&lt;entidade&gt;/metadados</code>.</p>
+  <nav id="abas"></nav>
+
+  <section>
+    <h2 id="tituloForm"></h2>
+    <form id="form" novalidate></form>
+    <div id="erros"></div>
+  </section>
+
+  <section>
+    <h2>Registros</h2>
+    <div class="tabela" id="tabela"></div>
+  </section>
+</main>
+
+<script>
+let entidades = [], rotaAtual = null, meta = null, editandoId = null;
+const $ = (s) => document.querySelector(s);
+
+async function api(url, opcoes = {}) {
+  const r = await fetch(url, { headers: { 'Content-Type': 'application/json' }, ...opcoes });
+  const dados = r.status === 204 ? null : await r.json();
+  if (!r.ok) throw dados;
+  return dados;
+}
+
+// "cargaHoraria" -> "Carga horaria"
+const rotulo = (p) => { const t = p.replace(/([A-Z])/g, ' $1').toLowerCase(); return t[0].toUpperCase() + t.slice(1); };
+const el = (tag, props = {}, ...filhos) => { const e = Object.assign(document.createElement(tag), props); e.append(...filhos); return e; };
+
+async function iniciar() {
+  entidades = await api('/api/entidades');
+  const abas = $('#abas');
+  entidades.forEach((e) => abas.append(el('button', { textContent: e.rota, onclick: () => abrir(e.rota) })));
+  if (entidades.length) abrir(entidades[0].rota);
+}
+
+async function abrir(rota) {
+  rotaAtual = rota; editandoId = null;
+  meta = await api(`/api/${rota}/metadados`);
+  document.querySelectorAll('#abas button').forEach((b) => b.classList.toggle('ativa', b.textContent === rota));
+  montarFormulario();
+  await carregarTabela();
+}
+
+function montarFormulario() {
+  const form = $('#form');
+  form.replaceChildren();
+  $('#erros').textContent = '';
+  $('#tituloForm').textContent = (editandoId ? 'Editar ' : 'Novo registro em ') + meta.tabela;
+
+  meta.colunas.filter((c) => !c.chavePrimaria).forEach((c) => {
+    const input = el('input', { name: c.propriedade, required: c.obrigatorio });
+    input.type = c.email ? 'email' : c.tipo === 'Number' ? 'number' : 'text';
+    if (c.tamanhoMaximo) input.maxLength = c.tamanhoMaximo;
+    if (c.tipo === 'Number') input.step = 'any';
+    form.append(el('label', {}, el('span', { className: c.obrigatorio ? 'obrig' : '', textContent: rotulo(c.propriedade) }), input));
+  });
+
+  form.append(el('div', { className: 'acoes' },
+    el('button', { type: 'submit', className: 'primario', textContent: editandoId ? 'Salvar' : 'Cadastrar' }),
+    el('button', { type: 'button', textContent: 'Limpar', onclick: () => { editandoId = null; montarFormulario(); } })));
+}
+
+$('#form').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  const dados = {};
+  meta.colunas.filter((c) => !c.chavePrimaria).forEach((c) => {
+    const v = ev.target.elements[c.propriedade].value.trim();
+    if (v !== '') dados[c.propriedade] = c.tipo === 'Number' ? Number(v) : v;
+  });
+  try {
+    const url = `/api/${rotaAtual}` + (editandoId ? `/${editandoId}` : '');
+    await api(url, { method: editandoId ? 'PUT' : 'POST', body: JSON.stringify(dados) });
+    editandoId = null; montarFormulario(); await carregarTabela();
+  } catch (e) {
+    // erros vindos da validação do backend (que usa os mesmos metadados)
+    $('#erros').textContent = (e.erros || [e.erro || 'Erro inesperado']).join(' | ');
+  }
+});
+
+async function carregarTabela() {
+  const linhas = await api(`/api/${rotaAtual}`);
+  const alvo = $('#tabela');
+  alvo.replaceChildren();
+  if (!linhas.length) { alvo.append(el('div', { className: 'vazio', textContent: 'Nenhum registro ainda.' })); return; }
+
+  const pk = meta.colunas.find((c) => c.chavePrimaria).propriedade;
+  const cabecalho = el('tr', {}, ...meta.colunas.map((c) => el('th', { textContent: rotulo(c.propriedade) })), el('th'));
+  const corpo = linhas.map((l) => el('tr', {},
+    ...meta.colunas.map((c) => el('td', { textContent: l[c.propriedade] ?? '' })),
+    el('td', {},
+      el('button', { textContent: 'Editar', onclick: () => editar(l) }),
+      el('button', { textContent: 'Excluir', onclick: async () => { await api(`/api/${rotaAtual}/${l[pk]}`, { method: 'DELETE' }); carregarTabela(); } }))));
+  alvo.append(el('table', {}, el('thead', {}, cabecalho), el('tbody', {}, ...corpo)));
+}
+
+function editar(linha) {
+  const pk = meta.colunas.find((c) => c.chavePrimaria).propriedade;
+  editandoId = linha[pk];
+  montarFormulario();
+  meta.colunas.filter((c) => !c.chavePrimaria).forEach((c) => { $('#form').elements[c.propriedade].value = linha[c.propriedade] ?? ''; });
+}
+
+iniciar();
+</script>
+</body>
+</html>

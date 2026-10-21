@@ -1,5 +1,6 @@
 import 'reflect-metadata';
 
+// Exercício 02 (mantido sem alterações): aceita @Tabela('nome') e @Tabela puro.
 export function Tabela(nomeDaTabela: string): ClassDecorator;
 export function Tabela(target: Function): void;
 
